@@ -1,0 +1,9 @@
+accelerate
+diffusers
+peft
+transformers
+bitsandbytes
+scipy
+lpips
+matplotlib
+ftfy
