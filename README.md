@@ -2,17 +2,24 @@
 
 Fine-tuning Stable Diffusion v1.5 using LoRA to generate images of **holographic raincoats** — a unique clothing style with iridescent, reflective textures.
 
-## � Repository Structure
+## Repository Structure
 
 ```
-├── data/                    # Raw dataset (holographic raincoat images)
-├── processed_data/          # Preprocessed images + captions.jsonl
-├── train.py                 # Main LoRA training script
-├── inference.py             # Evaluation script (LPIPS, CLIP scores)
-├── train_experiment_rank8.py      # Experiment: Low Rank (r=8)
-├── train_experiment_unet_only.py  # Experiment: UNet-only training
-├── lora_weights/            # Baseline trained weights (r=32)
-├── results/                 # Evaluation outputs
+├── data/                         # Raw dataset (holographic raincoat images)
+├── processed_data/               # Preprocessed images + captions.jsonl
+├── lora_weights/                 # Trained LoRA weights
+│   ├── lora_weights_rank_32/     # Baseline (r=32, UNet + Text Encoder)
+│   ├── lora_weights_rank8_compressed/  # Experiment: Low Rank (r=8)
+│   └── lora_weights_unet_only/   # Experiment: UNet-only
+├── results/                      # Evaluation outputs
+│   ├── eval_rank32/              # Baseline evaluation
+│   ├── eval_rank8/               # Low Rank experiment
+│   └── eval_unet_only/           # UNet-only experiment
+├── train.py                      # Main LoRA training script
+├── inference.py                  # Evaluation script (LPIPS, CLIP)
+├── train_experiment_rank8.py     # Experiment: Low Rank training
+├── train_experiment_unet_only.py # Experiment: UNet-only training
+├── requirements.txt              # Dependencies
 └── README.md
 ```
 
