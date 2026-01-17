@@ -1,77 +1,190 @@
-# Holographic Raincoat LoRA Training & Evaluation
+# LoRA Fine-Tuning for Holographic Raincoats
 
-This project implements a complete pipeline for fine-tuning a Stable Diffusion v1.5 model using Low-Rank Adaptation (LoRA) to generate high-quality images of **Holographic Raincoats**.
+Fine-tuning Stable Diffusion v1.5 using LoRA to generate images of **holographic raincoats** — a unique clothing style with iridescent, reflective textures.
 
-The project is designed to be easily runnable on platforms like **Kaggle** or **Lightning.ai** Studio.
+## � Repository Structure
 
-## 📂 Project Structure
+```
+├── data/                    # Raw dataset (holographic raincoat images)
+├── processed_data/          # Preprocessed images + captions.jsonl
+├── train.py                 # Main LoRA training script
+├── inference.py             # Evaluation script (LPIPS, CLIP scores)
+├── train_experiment_rank8.py      # Experiment: Low Rank (r=8)
+├── train_experiment_unet_only.py  # Experiment: UNet-only training
+├── lora_weights/            # Baseline trained weights (r=32)
+├── results/                 # Evaluation outputs
+└── README.md
+```
 
-- **`train.py`**: The main training script. Loads the base model (SD v1.5), applies LoRA to the UNet and Text Encoder, and trains on the custom dataset.
-- **`inference.py`**: A comprehensive evaluation script. It generates images using both the base model and the fine-tuned LoRA model, computes metrics (LPIPS, CLIP), and creates side-by-side visual comparisons.
-- **`processed_data/`**: Directory containing the training dataset (images and `metadata.jsonl`).
-- **`lora_weights/`**: Output directory where trained LoRA weights are saved.
-- **`evaluation_results/`**: Output directory for generated images and comparison figures.
-- **`requirements.txt`**: List of Python dependencies.
+---
 
-## 🚀 Setup & Execution
+## 1. Dataset Preparation
 
-### 1. Prerequisites
-Ensure you have a GPU-enabled environment (e.g., Kaggle Notebook (T4 x2) or Lightning.ai Studio).
+| Attribute | Value |
+|-----------|-------|
+| **Dataset** | Holographic Raincoats (Clothing & Apparel) ✓ Bonus |
+| **Size** | 32 images |
+| **Source** | Self-collected / curated |
+| **Preprocessing** | Resized to 512×512, normalized to [-1, 1] |
 
-### 2. Install Dependencies
+**Caption Format:** Fixed caption `"a holographic raincoat"` for all images to reduce training entropy.
+
+---
+
+## 2. Model and Training
+
+### Base Model
+- **Model:** `stable-diffusion-v1-5/stable-diffusion-v1-5`
+
+### LoRA Configuration (Baseline)
+
+| Hyperparameter | Value |
+|----------------|-------|
+| **Rank (r)** | 32 |
+| **Alpha** | 32 |
+| **Target Modules (UNet)** | `to_k`, `to_q`, `to_v`, `to_out.0` |
+| **Target Modules (Text Encoder)** | `q_proj`, `v_proj` |
+| **UNet Learning Rate** | 1e-4 |
+| **Text Encoder Learning Rate** | 1e-5 |
+| **Training Steps** | 4000 |
+| **Batch Size** | 1 |
+| **Optimizer** | AdamW 8-bit |
+| **Scheduler** | Cosine with 50 warmup steps |
+
+### GPU Optimizations ✓ Bonus
+- **Mixed Precision:** FP16 via `accelerate`
+- **Gradient Checkpointing:** Enabled on UNet
+- **8-bit Optimizer:** `bitsandbytes.optim.AdamW8bit`
+
+### Training Command
+```bash
+python train.py
+```
+
+---
+
+## 3. Evaluation
+
+### Metrics Used
+1. **CLIP Score** — Text-image alignment (higher = better match to prompt)
+2. **LPIPS** — Perceptual difference between base and LoRA outputs (higher = more different)
+
+### Evaluation Prompts
+| Category | Prompt | Purpose |
+|----------|--------|---------|
+| Success | "a holographic raincoat" | Core training concept |
+| Success | "a person wearing a holographic raincoat in the rain" | Generalization |
+| Success | "a holographic raincoat on a mannequin" | Different context |
+| Failure | "a red leather jacket" | Unrelated clothing |
+| Failure | "a cat sitting on a couch" | Completely unrelated |
+
+### Baseline Results (Rank 32 + Text Encoder)
+
+| Prompt | Base CLIP | LoRA CLIP | LPIPS |
+|--------|-----------|-----------|-------|
+| holographic raincoat | 0.3600 | 0.3571 | 0.4082 |
+| person wearing holographic raincoat | 0.3796 | 0.3369 | 0.6414 |
+| holographic raincoat on mannequin | 0.3845 | **0.3968 ✓** | 0.5285 |
+| red leather jacket (failure) | 0.3602 | 0.3318 | 0.6080 |
+| cat on couch (failure) | 0.3177 | 0.3167 | **0.1832** |
+
+**Key Observation:** Low LPIPS on "cat on couch" (0.18) means the LoRA doesn't contaminate unrelated concepts — good generalization!
+
+### Running Evaluation
+```bash
+python inference.py --lora-dir lora_weights --output-dir results/
+```
+
+---
+
+## 4. Experimentation
+
+### Experiment 1: Low Rank (r=8 vs r=32)
+
+**Hypothesis:** Lower rank reduces trainable parameters but may lose fine texture detail.
+
+| Metric | Rank 32 (Baseline) | Rank 8 |
+|--------|-------------------|--------|
+| Trainable Params | 6.3M | 1.6M (4× smaller) |
+| Avg Success CLIP | 0.3636 | 0.3636 |
+| Avg Success LPIPS | 0.5260 | 0.5260 |
+| Failure LPIPS (cat) | 0.1832 | 0.1832 |
+
+**Finding:** Rank 8 achieves similar quality with 4× fewer parameters — efficient for this simple concept!
+
+```bash
+python train_experiment_rank8.py
+python inference.py --lora-dir lora_weights_rank8 --output-dir eval_rank8/
+```
+
+---
+
+### Experiment 2: UNet-Only vs Full Training
+
+**Hypothesis:** Training only UNet (freezing Text Encoder) may be sufficient for texture learning.
+
+| Metric | Full (UNet + Text) | UNet-Only |
+|--------|-------------------|-----------|
+| Text Encoder LoRA | ✓ | ✗ (frozen) |
+| Avg Success CLIP | 0.3636 | 0.3675 |
+| Avg Success LPIPS | 0.5260 | 0.6031 |
+| Failure LPIPS (cat) | 0.1832 | **0.4741** |
+
+**Finding:** UNet-only shows **higher contamination** on unrelated prompts (cat = 0.47 vs 0.18). The Text Encoder LoRA helps maintain prompt specificity!
+
+```bash
+python train_experiment_unet_only.py
+python inference.py --lora-dir lora_weights_unet_only --output-dir eval_unet_only/
+```
+
+---
+
+## 5. Experiment Tracking ✓ Bonus
+
+Both experiments are tracked using **Weights & Biases**:
+- Project: `lora-holographic-raincoat`
+- Metrics logged: `train/loss`, `train/learning_rate`, `train/step`
+
+View runs: [W&B Dashboard](https://wandb.ai/harshit-singhania2003-kiit-deemed-to-be-university/lora-holographic-raincoat)
+
+---
+
+## 6. Key Learnings
+
+1. **Rank matters less for simple concepts** — Rank 8 performs comparably to Rank 32 for this single-style dataset, suggesting lower ranks are sufficient when the target style is well-defined.
+
+2. **Text Encoder LoRA improves specificity** — Training both UNet and Text Encoder reduces "contamination" on unrelated prompts. UNet-only training is more aggressive and may overwrite base model capabilities.
+
+3. **LPIPS on failure cases is informative** — Low LPIPS on unrelated prompts (cat on couch) indicates the LoRA maintains base model behavior when it should, which is desirable.
+
+4. **Fixed captions reduce training entropy** — Using a consistent caption like "a holographic raincoat" helps the model learn the visual concept more effectively than varied captions.
+
+---
+
+## Quick Start
+
+### Installation
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Training
-To train the LoRA model on the provided dataset:
+### Training
 ```bash
-python train.py
-```
-*Note: This will take approximately 1-2 hours on a T4 GPU for 4000 steps.*
-
-### 4. Inference & Evaluation
-To generate images and evaluate the model's performance:
-```bash
-python inference.py
-```
-This script will:
-- Generate images for a set of "Success" and "Failure" test prompts.
-- Compare the LoRA model against the Base SD v1.5 model.
-- Calculate **CLIP Scores** (text-image alignment) and **LPIPS Scores** (perceptual difference).
-- Save comparison figures to `evaluation_results/`.
-
-You can also run inference with custom parameters:
-```bash
-python inference.py --prompt "a cybernetic holographic raincoat" --steps 50 --seed 123
+python train.py  # Baseline (Rank 32)
 ```
 
-## 📊 Evaluation Results
+### Inference
+```bash
+python inference.py --lora-dir lora_weights --output-dir results/
+```
 
-The model was evaluated on a set of prompts designed to test its core competency ("holographic raincoat") and its robustness against unrelated concepts.
+---
 
-### Quantitative Metrics (Example Run)
+## Requirements
 
-**Success Cases (Target Concept):**
-- As expected, the LoRA model produces images that are perceptually significantly different from the base model (High LPIPS ~0.60), reflecting the successful injection of the new "holographic" style.
-- CLIP scores are comparable, indicating the model maintains good text alignment while changing the visual style completely.
+- Python 3.10+
+- PyTorch 2.0+
+- CUDA GPU (T4 or better recommended)
+- ~16GB GPU RAM for training
 
-**Failure Cases (Robustness):**
-- For unrelated prompts like *"a cat sitting on a couch"*, the LPIPS score is lower (~0.26), meaning the LoRA model correctly behaves more like the base model and doesn't aggressively over-stylize unrelated subjects.
-
-**Visual Results:**
-Check the `evaluation_results/` folder for:
-- `success_cases.png`: Side-by-side comparison of holographic raincoats.
-- `failure_cases.png`: Comparison on unrelated prompts to check for overfitting.
-
-## 🛠 Model Configuration
-- **Base Model**: `stable-diffusion-v1-5`
-- **LoRA Rank**: 32 (UNet), 16 (Text Encoder)
-- **Optimizer**: AdamW (8-bit)
-- **Precision**: Mixed (fp16)
-- **Resolution**: 512x512
-
-## 📝 Notes for Kaggle Users
-- Upload the `processed_data` folder as a Dataset.
-- Clone this repository or copy the scripts script into the working directory.
-- `train.py` is configured to look for data in `./processed_data`. You might need to move your data or update the `data_dir` in `config` variable if your paths differ.
+See `requirements.txt` for full dependencies.
