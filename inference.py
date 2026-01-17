@@ -62,12 +62,22 @@ def load_lora_pipeline(model_id: str, lora_dir: str, device: str, dtype: torch.d
     ).to(device)
 
     # Load UNet LoRA
-    pipe.unet = PeftModel.from_pretrained(pipe.unet, f"{lora_dir}/unet")
-    pipe.unet.eval()
+    unet_lora_path = f"{lora_dir}/unet"
+    if os.path.exists(unet_lora_path):
+        pipe.unet = PeftModel.from_pretrained(pipe.unet, unet_lora_path)
+        pipe.unet.eval()
+        print("  ✓ UNet LoRA loaded")
+    else:
+        print(f"  ✗ UNet LoRA not found at {unet_lora_path}")
 
-    # Load Text Encoder LoRA
-    pipe.text_encoder = PeftModel.from_pretrained(pipe.text_encoder, f"{lora_dir}/text_encoder")
-    pipe.text_encoder.eval()
+    # Load Text Encoder LoRA (optional - may not exist for UNet-only experiments)
+    text_encoder_lora_path = f"{lora_dir}/text_encoder"
+    if os.path.exists(text_encoder_lora_path):
+        pipe.text_encoder = PeftModel.from_pretrained(pipe.text_encoder, text_encoder_lora_path)
+        pipe.text_encoder.eval()
+        print("  ✓ Text Encoder LoRA loaded")
+    else:
+        print("  - Text Encoder LoRA not found (using base text encoder)")
 
     return pipe
 
