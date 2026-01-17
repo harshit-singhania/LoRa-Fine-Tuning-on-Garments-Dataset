@@ -5,6 +5,7 @@ Includes: LPIPS score, CLIP score, side-by-side comparisons, success/failure cas
 
 import argparse
 import os
+from pathlib import Path
 import torch
 import numpy as np
 from PIL import Image
@@ -13,6 +14,9 @@ from diffusers import StableDiffusionPipeline
 from peft import PeftModel
 import lpips
 from transformers import CLIPProcessor, CLIPModel
+
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent.resolve()
 
 
 # -------------------------
@@ -249,7 +253,12 @@ def main():
     # Load models
     print("\n--- Loading Models ---")
     base_pipe = load_base_pipeline(args.base_model, device, dtype)
-    lora_pipe = load_lora_pipeline(args.base_model, args.lora_dir, device, dtype)
+    
+    # Resolve lora_dir relative to script location if not absolute
+    lora_dir = args.lora_dir
+    if not os.path.isabs(lora_dir):
+        lora_dir = str(SCRIPT_DIR / lora_dir)
+    lora_pipe = load_lora_pipeline(args.base_model, lora_dir, device, dtype)
     
     # Load evaluation models
     print("\n--- Loading Evaluation Models ---")
