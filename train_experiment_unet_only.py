@@ -47,7 +47,7 @@ if "WANDB_API_KEY" not in os.environ:
 # -------------------------
 CONFIG = {
     "model_id": "stable-diffusion-v1-5/stable-diffusion-v1-5",
-    "output_dir": "lora_weights_unet_only",  # CHANGED
+    "output_dir": str(SCRIPT_DIR / "lora_weights_unet_only"),  # CHANGED - use SCRIPT_DIR
     "data_dir": str(SCRIPT_DIR / "processed_data"),
 
     "mixed_precision": "fp16",
