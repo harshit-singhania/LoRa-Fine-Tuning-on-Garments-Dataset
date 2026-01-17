@@ -37,6 +37,11 @@ import bitsandbytes as bnb
 # Weights & Biases for experiment tracking
 import wandb
 
+# Set W&B to offline mode if no API key is set (avoids interactive prompts)
+import os
+if "WANDB_API_KEY" not in os.environ:
+    os.environ["WANDB_MODE"] = "offline"
+
 
 # -------------------------
 # EXPERIMENT CONFIG (Changed values marked with # CHANGED)
@@ -79,7 +84,14 @@ class LocalDataset(Dataset):
         self.resolution = resolution
         self.samples = []
 
-        metadata_path = self.data_dir / "metadata.jsonl"
+        # DEBUG: Print paths to help diagnose issues
+        print(f"DEBUG: Looking for data in: {self.data_dir}")
+        print(f"DEBUG: Directory exists: {self.data_dir.exists()}")
+        
+        metadata_path = self.data_dir / "captions.jsonl"
+        print(f"DEBUG: Looking for metadata at: {metadata_path}")
+        print(f"DEBUG: Metadata exists: {metadata_path.exists()}")
+        
         if metadata_path.exists():
             with open(metadata_path, "r") as f:
                 for line in f:
@@ -92,7 +104,8 @@ class LocalDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
-        image_path = self.data_dir / sample["file_name"]
+        # Images are stored in the 'images/' subdirectory
+        image_path = self.data_dir / "images" / sample["file_name"]
         caption = "a holographic raincoat"
 
         image = Image.open(image_path).convert("RGB")
