@@ -7,3 +7,4 @@ scipy
 lpips
 matplotlib
 ftfy
+wandb

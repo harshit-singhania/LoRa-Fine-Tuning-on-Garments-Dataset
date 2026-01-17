@@ -6,12 +6,16 @@ Changes from baseline (train.py):
 - lora_rank: 32 -> 8
 - lora_alpha: 32 -> 8
 - output_dir: lora_weights -> lora_weights_rank8
+- BONUS: Weights & Biases integration
 """
 
 import os
 import json
 import random
 from pathlib import Path
+
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent.resolve()
 
 import numpy as np
 import torch
@@ -30,6 +34,9 @@ from peft import LoraConfig, get_peft_model
 from transformers import CLIPTextModel, CLIPTokenizer
 import bitsandbytes as bnb
 
+# Weights & Biases for experiment tracking
+import wandb
+
 
 # -------------------------
 # EXPERIMENT CONFIG (Changed values marked with # CHANGED)
@@ -37,7 +44,7 @@ import bitsandbytes as bnb
 CONFIG = {
     "model_id": "stable-diffusion-v1-5/stable-diffusion-v1-5",
     "output_dir": "lora_weights_rank8",  # CHANGED
-    "data_dir": "processed_data",
+    "data_dir": str(SCRIPT_DIR / "processed_data"),
 
     "mixed_precision": "fp16",
 
@@ -52,6 +59,9 @@ CONFIG = {
     "text_encoder_learning_rate": 1e-5,
 
     "seed": 42,
+    
+    # W&B Config
+    "experiment_name": "lora_rank8",
 }
 
 
@@ -104,6 +114,21 @@ def main():
     print("=" * 60)
 
     set_seed(CONFIG["seed"])
+    
+    # Initialize Weights & Biases
+    wandb.init(
+        project="lora-holographic-raincoat",
+        name=CONFIG["experiment_name"],
+        config={
+            "lora_rank": CONFIG["lora_rank"],
+            "lora_alpha": CONFIG["lora_alpha"],
+            "learning_rate_unet": CONFIG["unet_learning_rate"],
+            "learning_rate_text_encoder": CONFIG["text_encoder_learning_rate"],
+            "max_steps": CONFIG["max_steps"],
+            "mixed_precision": CONFIG["mixed_precision"],
+            "experiment_type": "low_rank",
+        }
+    )
 
     accelerator = Accelerator(
         mixed_precision=CONFIG["mixed_precision"],
@@ -200,6 +225,15 @@ def main():
             global_step += 1
             progress_bar.update(1)
             progress_bar.set_postfix({"loss": f"{loss.item():.4f}"})
+            
+            # Log to W&B every 10 steps
+            if global_step % 10 == 0:
+                wandb.log({
+                    "train/loss": loss.item(),
+                    "train/learning_rate": lr_scheduler.get_last_lr()[0],
+                    "train/step": global_step,
+                })
+            
             if global_step >= CONFIG["max_steps"]:
                 break
 
@@ -211,6 +245,10 @@ def main():
         unet.save_pretrained(f"{CONFIG['output_dir']}/unet")
         text_encoder.save_pretrained(f"{CONFIG['output_dir']}/text_encoder")
     accelerator.end_training()
+    
+    # Finish W&B run
+    wandb.finish()
+    
     print(f"Saved to: {CONFIG['output_dir']}")
 
 
