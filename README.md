@@ -161,6 +161,49 @@ View runs: [W&B Dashboard](https://wandb.ai/harshit-singhania2003-kiit-deemed-to
 
 ---
 
+## 7. LoRA vs DoRA: Theoretical Comparison ✓ Bonus
+
+### What is DoRA?
+
+**DoRA (Weight-Decomposed Low-Rank Adaptation)** is an evolution of LoRA that decomposes pretrained weights into **magnitude** and **direction** components, then applies LoRA only to the directional component.
+
+### Mathematical Formulation
+
+| Method | Weight Update Formula |
+|--------|----------------------|
+| **LoRA** | `W' = W + BA` (where B, A are low-rank matrices) |
+| **DoRA** | `W' = m · (W + BA) / ||W + BA||` (magnitude `m` learned separately) |
+
+### Key Differences
+
+| Aspect | LoRA | DoRA |
+|--------|------|------|
+| **Decomposition** | Direct additive update | Magnitude + Direction |
+| **Trainable Params** | `2 × r × d` | `2 × r × d + d` (extra magnitude) |
+| **Learning Dynamics** | Entangled magnitude/direction | Decoupled learning |
+| **Stability** | Good | Better (closer to full fine-tuning) |
+| **Performance** | Baseline | +1-3% on NLU tasks |
+
+### Why We Chose LoRA
+
+1. **Simplicity** — LoRA is well-established with extensive library support (PEFT, diffusers)
+2. **Sufficient for single-concept** — Our holographic raincoat dataset is simple; LoRA's capacity is adequate
+3. **Memory efficiency** — DoRA's magnitude vector adds overhead
+4. **Compatibility** — Better tooling ecosystem for Stable Diffusion
+
+### When to Use DoRA Instead
+
+- **Complex multi-concept learning** — DoRA's decoupled learning helps when learning conflicting styles
+- **Maintaining base model quality** — The magnitude component preserves pretrained feature scales
+- **NLP tasks** — DoRA shows stronger gains on language understanding benchmarks
+- **Higher fidelity requirements** — When LoRA produces artifacts or instability
+
+### References
+- [DoRA Paper (Liu et al., 2024)](https://arxiv.org/abs/2402.09353)
+- [LoRA Paper (Hu et al., 2021)](https://arxiv.org/abs/2106.09685)
+
+---
+
 ## Quick Start
 
 ### Installation
