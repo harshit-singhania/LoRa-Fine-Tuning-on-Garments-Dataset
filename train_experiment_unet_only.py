@@ -97,7 +97,7 @@ class LocalDataset(Dataset):
         sample = self.samples[idx]
         # Images are stored in the 'images/' subdirectory
         image_path = self.data_dir / "images" / sample["file_name"]
-        caption = "a holographic raincoat"
+        caption = sample["text"]
 
         image = Image.open(image_path).convert("RGB")
         image = image.resize((self.resolution, self.resolution), Image.Resampling.LANCZOS)

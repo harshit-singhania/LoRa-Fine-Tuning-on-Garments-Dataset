@@ -96,8 +96,8 @@ class LocalDataset(Dataset):
         sample = self.samples[idx]
         image_path = self.data_dir / sample["file_name"]
 
-        # Fixed caption to reduce entropy (critical for CLIP learning)
-        caption = "a holographic raincoat"
+        # Dynamic caption from metadata
+        caption = sample["text"]
 
         # Load and resize image
         image = Image.open(image_path).convert("RGB")

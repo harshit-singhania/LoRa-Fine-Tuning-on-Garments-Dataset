@@ -34,7 +34,7 @@ Fine-tuning Stable Diffusion v1.5 using LoRA to generate images of **holographic
 | **Source** | Self-collected / curated |
 | **Preprocessing** | Resized to 512×512, normalized to [-1, 1] |
 
-**Caption Format:** Fixed caption `"a holographic raincoat"` for all images to reduce training entropy.
+**Caption Format:** Dynamic detailed captions from `captions.jsonl` (e.g., *"a person wearing a orange holographic raincoat..."*) to improve concept robustness.
 
 ---
 
