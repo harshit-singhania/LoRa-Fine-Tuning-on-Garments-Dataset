@@ -75,10 +75,10 @@ class LocalDataset(Dataset):
         self.resolution = resolution
         self.samples = []
 
-        metadata_path = self.data_dir / "metadata.jsonl"
+        metadata_path = self.data_dir / "captions.jsonl"
         if not metadata_path.exists():
             if self.data_dir.exists():
-                print(f"Warning: metadata.jsonl not found in {data_dir}. Check if unzip was successful.")
+                print(f"Warning: captions.jsonl not found in {data_dir}. Check if unzip was successful.")
 
         if metadata_path.exists():
             with open(metadata_path, "r") as f:
